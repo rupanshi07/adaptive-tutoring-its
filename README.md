@@ -1,4 +1,4 @@
-\# Adaptive Confidence Calibration in Intelligent Tutoring Systems
+﻿# Adaptive Confidence Calibration in Intelligent Tutoring Systems
 
 
 
@@ -12,7 +12,7 @@ the natural-language tutor layer.
 
 
 
-\## Overview
+## Overview
 
 
 
@@ -30,7 +30,7 @@ responding identically to every student.
 
 
 
-\## Architecture
+## Architecture
 
 Student types answer
 
@@ -72,7 +72,7 @@ v
 
 Reward computed from outcome --> Q-table updated
 
-\## Project Structure
+## Project Structure
 
 adaptive-tutoring-its/
 
@@ -110,7 +110,7 @@ questions, get graded by Gemini, and see the adaptive tutor respond.
 
 
 
-\## How It Works
+## How It Works
 
 
 
@@ -158,7 +158,7 @@ questions, get graded by Gemini, and see the adaptive tutor respond.
 
 
 
-\## Novelty
+## Novelty
 
 
 
@@ -176,7 +176,7 @@ to everyone.
 
 
 
-\## Tech Stack
+## Tech Stack
 
 
 
@@ -194,7 +194,7 @@ to everyone.
 
 
 
-\## Limitations / Future Work
+## Limitations / Future Work
 
 
 
@@ -211,6 +211,8 @@ to everyone.
 \- Training currently uses simulated learner behavior; validating against
 
 &#x20; real student interaction data is a natural next step.
+
+
 
 
 
