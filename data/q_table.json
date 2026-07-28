@@ -20,7 +20,7 @@
   "('Medium', 'Over-confident')": [
     0.0,
     0.0,
-    0.0,
+    1.9,
     0.0
   ],
   "('Medium', 'Well-calibrated')": [
