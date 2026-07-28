@@ -5,6 +5,7 @@ Students type real answers; Gemini grades them automatically.
 """
 
 import streamlit as st
+import time
 
 from modules.bayesian_network import build_bayesian_network, estimate_probability_correct
 from modules.hmm_calibration import build_hmm, encode_observation, infer_calibration_state
@@ -25,6 +26,7 @@ def init_session_state():
         "history": [],
         "previous_accuracy": "Medium",
         "current_question": get_random_question(),
+        "question_start_time": time.time(),
         "round_num": 1,
         "feedback": None,
         "awaiting_next": False,
@@ -36,14 +38,15 @@ def init_session_state():
 
 def next_question():
     st.session_state.current_question = get_random_question()
+    st.session_state.question_start_time = time.time()
     st.session_state.round_num += 1
     st.session_state.feedback = None
     st.session_state.awaiting_next = False
 
 
 def main():
-    st.set_page_config(page_title="Adaptive Tutoring System", page_icon="🎓")
-    st.title("🎓 Adaptive Tutoring System")
+    st.set_page_config(page_title="Adaptive Tutoring System", page_icon=":books:")
+    st.title("Adaptive Tutoring System")
     st.caption("Bayesian Networks + Hidden Markov Models + Reinforcement Learning")
 
     bn_model, hmm_model, agent = load_models()
@@ -67,16 +70,13 @@ def main():
             value="Medium",
             key=f"conf_{st.session_state.round_num}",
         )
-        time_taken = st.radio(
-            "Response time",
-            ["Fast", "Slow"],
-            key=f"time_{st.session_state.round_num}",
-        )
 
         if st.button("Submit Answer"):
             if not student_answer.strip():
                 st.warning("Please type an answer before submitting.")
             else:
+                elapsed_seconds = time.time() - st.session_state.question_start_time
+                time_taken = "Fast" if elapsed_seconds < 15 else "Slow"
                 with st.spinner("Grading your answer..."):
                     is_correct = grade_answer(q, student_answer)
 
@@ -120,6 +120,8 @@ def main():
                     "action": action,
                     "feedback": feedback_text,
                     "reward": reward,
+                    "response_time": time_taken,
+                    "elapsed_seconds": round(elapsed_seconds, 1),
                 }
                 st.session_state.awaiting_next = True
                 st.rerun()
@@ -140,6 +142,7 @@ def main():
         with col2:
             st.metric("Calibration State", fb["calibration_state"])
 
+        st.caption(f"Response time: {fb['response_time']} ({fb['elapsed_seconds']}s)")
         st.markdown(f"**Tutor Action:** `{fb['action']}`")
 
         if fb["action"] == "Hint":
@@ -153,7 +156,7 @@ def main():
 
         st.caption(f"Reward signal (for RL training): {fb['reward']}")
 
-        if st.button("Next Question ➜"):
+        if st.button("Next Question"):
             next_question()
             st.rerun()
 
@@ -169,3 +172,13 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
