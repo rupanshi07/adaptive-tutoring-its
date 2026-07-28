@@ -1,4 +1,4 @@
-﻿"""
+"""
 Full Pipeline: Question -> Answer -> BN -> HMM -> RL -> Tutor Feedback -> Reward
 Simulates one complete learner interaction cycle end-to-end.
 """
@@ -34,7 +34,7 @@ def determine_outcome(is_correct, action):
     return "repeated_mistake"
 
 
-def run_full_interaction(bn_model, hmm_model, agent, learner_history, confidence_level, previous_accuracy):
+def run_full_interaction(bn_model, hmm_model, agent, learner_history, confidence_level, previous_accuracy, use_llm=True):
     question = get_random_question()
 
     is_correct = simulate_learner_answer(question, confidence_level)
@@ -59,7 +59,7 @@ def run_full_interaction(bn_model, hmm_model, agent, learner_history, confidence
     rl_state = (prob_bucket, calibration_state)
     action = agent.choose_action(rl_state)
 
-    feedback = generate_feedback(question, action)
+    feedback = generate_feedback(question, action, use_llm=use_llm)
 
     outcome = determine_outcome(is_correct, action)
     reward = compute_reward(outcome)
@@ -120,3 +120,5 @@ if __name__ == "__main__":
     agent.save_q_table()
     print(f"\n{'='*50}")
     print("Simulation complete. Q-table saved to data/q_table.json")
+
+

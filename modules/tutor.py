@@ -110,12 +110,14 @@ def _build_prompt(question, action):
         return base + "Give a brief, friendly transition to the next question."
 
 
-def generate_feedback(question, action):
+def generate_feedback(question, action, use_llm=True):
     """
     action: one of 'Hint', 'Explanation', 'Retry', 'Reveal'
     Calls Gemini to generate the actual feedback text dynamically.
     Falls back to a safe static message if the API call fails.
     """
+    if not use_llm:
+        return f"[static] Action={action}"
     try:
         client = get_client()
         prompt = _build_prompt(question, action)
@@ -135,4 +137,6 @@ if __name__ == "__main__":
     for action in ["Hint", "Explanation", "Retry", "Reveal"]:
         print(f"\n[Action: {action}]")
         print(generate_feedback(q, action))
+
+
 

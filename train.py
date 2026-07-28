@@ -1,4 +1,4 @@
-﻿"""
+"""
 Batch training script: runs many simulated interactions to let the
 RL agent'"'"'s Q-table converge to a meaningful policy.
 """
@@ -23,7 +23,8 @@ def train():
         confidence_level = random.choice(["Low", "Medium", "High"])
         result = run_full_interaction(
             bn_model, hmm_model, agent,
-            learner_history, confidence_level, previous_accuracy
+            learner_history, confidence_level, previous_accuracy,
+            use_llm=False
         )
         learner_history = result["updated_history"]
         if len(learner_history) > 20:
@@ -40,3 +41,4 @@ def train():
 
 if __name__ == "__main__":
     train()
+
