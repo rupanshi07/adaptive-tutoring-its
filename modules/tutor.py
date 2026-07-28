@@ -140,3 +140,37 @@ if __name__ == "__main__":
 
 
 
+
+
+
+
+def grade_answer(question, student_answer):
+    """
+    Uses Gemini to judge whether the student answer is substantively
+    correct compared to the reference answer. Returns True/False.
+    Falls back to False if the API call fails or parsing fails.
+    """
+    import json
+
+    prompt = (
+        "Question: " + question["question"] + "\n"
+        "Reference correct answer: " + question["correct_answer_summary"] + "\n"
+        "Student answer: " + student_answer + "\n\n"
+        "Judge if the student answer is substantively correct, even if worded "
+        "differently or less formally than the reference answer. "
+        "Respond with ONLY valid JSON, no other text, in this exact format: "
+        "{\"correct\": true} or {\"correct\": false}"
+    )
+
+    try:
+        client = get_client()
+        response = client.models.generate_content(
+            model="gemini-flash-latest",
+            contents=prompt,
+        )
+        raw = response.text.strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        parsed = json.loads(raw)
+        return bool(parsed.get("correct", False))
+    except Exception:
+        return False
