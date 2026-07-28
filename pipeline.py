@@ -1,36 +1,85 @@
+﻿"""
+Full Pipeline: Question -> Answer -> BN -> HMM -> RL -> Tutor Feedback -> Reward
+Simulates one complete learner interaction cycle end-to-end.
 """
-Pipeline: connects Bayesian Network -> HMM -> RL Agent
-This simulates one full learner interaction cycle without the UI or LLM tutor.
-"""
+
+import random
 
 from modules.bayesian_network import build_bayesian_network, estimate_probability_correct
 from modules.hmm_calibration import build_hmm, encode_observation, infer_calibration_state
 from modules.rl_agent import TutorRLAgent, bucket_probability, compute_reward
+from modules.tutor import get_random_question, generate_feedback
 
-def run_single_interaction(bn_model, hmm_model, agent, learner_history, features):
-    # Step 1: Bayesian Network -> P(Correct)
+
+def simulate_learner_answer(question, confidence_level):
+    """
+    Mock learner simulation: higher difficulty + higher declared confidence
+    doesn't guarantee correctness. This stands in for a real answer-checker
+    (e.g., exact match, LLM-graded, or numeric comparison) later.
+    """
+    difficulty_bias = {"Easy": 0.75, "Medium": 0.55, "Hard": 0.35}[question["difficulty"]]
+    is_correct = random.random() < difficulty_bias
+    return is_correct
+
+
+def determine_outcome(is_correct, action):
+    """
+    Maps (correctness, chosen action) to one of the reward categories
+    defined in compute_reward(). This models "what actually happened next."
+    """
+    if action == "Reveal":
+        return "needed_solution"
+    if is_correct:
+        return "improved_after_hint"
+    return "repeated_mistake"
+
+
+def run_full_interaction(bn_model, hmm_model, agent, learner_history, confidence_level, previous_accuracy):
+    question = get_random_question()
+
+    is_correct = simulate_learner_answer(question, confidence_level)
+
+    time_taken = random.choice(["Fast", "Slow"])
+    hints_used = "No"
+
     p_correct = estimate_probability_correct(
         bn_model,
-        confidence=features["confidence"],
-        difficulty=features["difficulty"],
-        time_=features["time"],
-        hints=features["hints"],
-        previous_accuracy=features["previous_accuracy"],
+        confidence=confidence_level,
+        difficulty=question["difficulty"],
+        time_=time_taken,
+        hints=hints_used,
+        previous_accuracy=previous_accuracy,
     )
 
-    # Step 2: HMM -> Calibration state
-    calibration_state = infer_calibration_state(hmm_model, learner_history)
+    observation = encode_observation(confidence_level, is_correct)
+    updated_history = learner_history + [observation]
+    calibration_state = infer_calibration_state(hmm_model, updated_history)
 
-    # Step 3: Build RL state, choose action
     prob_bucket = bucket_probability(p_correct)
     rl_state = (prob_bucket, calibration_state)
     action = agent.choose_action(rl_state)
 
+    feedback = generate_feedback(question, action)
+
+    outcome = determine_outcome(is_correct, action)
+    reward = compute_reward(outcome)
+
+    next_prob_bucket = bucket_probability(0.5)
+    next_state = (next_prob_bucket, calibration_state)
+    agent.update(rl_state, action, reward, next_state)
+
     return {
+        "question": question["question"],
+        "difficulty": question["difficulty"],
+        "confidence_declared": confidence_level,
+        "actually_correct": is_correct,
         "p_correct": p_correct,
         "calibration_state": calibration_state,
-        "rl_state": rl_state,
         "selected_action": action,
+        "feedback": feedback,
+        "outcome": outcome,
+        "reward": reward,
+        "updated_history": updated_history,
     }
 
 
@@ -39,33 +88,35 @@ if __name__ == "__main__":
     hmm_model = build_hmm()
     agent = TutorRLAgent()
 
-    # Example learner: confident, but history of being wrong
-    learner_history = [
-        encode_observation("High", False),
-        encode_observation("High", False),
-    ]
+    learner_history = []
+    previous_accuracy = "Medium"
 
-    features = {
-        "confidence": "High",
-        "difficulty": "Hard",
-        "time": "Fast",
-        "hints": "No",
-        "previous_accuracy": "Low",
-    }
+    NUM_ROUNDS = 5
+    for round_num in range(1, NUM_ROUNDS + 1):
+        confidence_level = random.choice(["Low", "Medium", "High"])
 
-    result = run_single_interaction(bn_model, hmm_model, agent, learner_history, features)
+        result = run_full_interaction(
+            bn_model, hmm_model, agent,
+            learner_history, confidence_level, previous_accuracy
+        )
 
-    print("=== Interaction Result ===")
-    print(f"P(Correct):          {result['p_correct']:.2f}")
-    print(f"Calibration State:   {result['calibration_state']}")
-    print(f"RL State:            {result['rl_state']}")
-    print(f"Selected Action:     {result['selected_action']}")
+        print(f"\n{'='*50}")
+        print(f"Round {round_num}")
+        print(f"{'='*50}")
+        print(f"Question:            {result['question']}")
+        print(f"Difficulty:          {result['difficulty']}")
+        print(f"Declared Confidence: {result['confidence_declared']}")
+        print(f"Actually Correct:    {result['actually_correct']}")
+        print(f"P(Correct) estimate: {result['p_correct']:.2f}")
+        print(f"Calibration State:   {result['calibration_state']}")
+        print(f"Selected Action:     {result['selected_action']}")
+        print(f"Feedback:            {result['feedback']}")
+        print(f"Outcome:             {result['outcome']}")
+        print(f"Reward:              {result['reward']}")
 
-    # Simulate feedback and update Q-table
-    reward = compute_reward("improved_after_hint")
-    next_state = ("Medium", "Well-calibrated")
-    agent.update(result["rl_state"], result["selected_action"], reward, next_state)
+        learner_history = result["updated_history"]
+        previous_accuracy = "High" if result["actually_correct"] else "Low"
+
     agent.save_q_table()
-    print(f"\nReward applied: {reward}")
-    print("Q-table updated and saved.")
-
+    print(f"\n{'='*50}")
+    print("Simulation complete. Q-table saved to data/q_table.json")
